@@ -704,6 +704,7 @@ message VideoDataParameter{
   enum Modality {
     RGB = 0;
     FLOW = 1;
+    MIX = 2;
   }
   optional Modality modality = 13 [default = FLOW];
 

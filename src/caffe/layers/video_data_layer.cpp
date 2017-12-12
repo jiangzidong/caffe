@@ -75,6 +75,9 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_FLOW)
 		CHECK(ReadSegmentFlowToDatum(lines_[lines_id_].first, lines_[lines_id_].second,
 									 offsets, new_height, new_width, new_length, &datum, name_pattern_.c_str()));
+	else if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_MIX)
+		CHECK(ReadSegmentMixToDatum(lines_[lines_id_].first, lines_[lines_id_].second,
+									 offsets, new_height, new_width, new_length, &datum, name_pattern_.c_str()));
 	else
 		CHECK(ReadSegmentRGBToDatum(lines_[lines_id_].first, lines_[lines_id_].second,
 									offsets, new_height, new_width, new_length, &datum, is_color, name_pattern_.c_str()));
@@ -142,6 +145,11 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 		}
 		if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_FLOW){
 			if(!ReadSegmentFlowToDatum(lines_[lines_id_].first, lines_[lines_id_].second,
+									   offsets, new_height, new_width, new_length, &datum, name_pattern_.c_str())) {
+				continue;
+			}
+		} else if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_MIX){
+			if(!ReadSegmentMixToDatum(lines_[lines_id_].first, lines_[lines_id_].second,
 									   offsets, new_height, new_width, new_length, &datum, name_pattern_.c_str())) {
 				continue;
 			}

@@ -304,7 +304,7 @@ void hdf5_save_nd_dataset<double>(
 }
 
 bool ReadSegDataToDatum(const string& img_filename, const string& label_filename, Datum* datum_data, Datum* datum_label, bool is_color) {
-  
+
   string *datum_data_string, *datum_label_string;
 
   int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
@@ -318,7 +318,7 @@ bool ReadSegDataToDatum(const string& img_filename, const string& label_filename
     LOG(ERROR) << "Could not load file " << label_filename;
     return false;
   }
-  
+
   int num_channels = (is_color ? 3 : 1);
 
   datum_data->set_channels(num_channels);
@@ -469,6 +469,70 @@ bool ReadSegmentFlowToDatum(const string& filename, const int label,
 		}
 	}
 	return true;
+}
+
+bool ReadSegmentMixToDatum(const string& filename, const int label,
+    const vector<int> offsets, const int height, const int width, const int length, Datum* datum,
+    const char* name_pattern ){
+  cv::Mat cv_img_x, cv_img_y;
+  string* datum_string;
+  string _img_pattern = "img_%05d.jpg";
+  const char* img_pattern = _img_pattern.c_str();
+  char tmp[30];
+  for (int i = 0; i < offsets.size(); ++i){
+    int offset = offsets[i];
+    for (int file_id = 1; file_id < length+1; ++file_id){
+      sprintf(tmp,name_pattern, 'x', int(file_id+offset));
+      string filename_x = filename + "/" + tmp;
+      cv::Mat cv_img_origin_x = cv::imread(filename_x, CV_LOAD_IMAGE_GRAYSCALE);
+      sprintf(tmp, name_pattern, 'y', int(file_id+offset));
+      string filename_y = filename + "/" + tmp;
+      cv::Mat cv_img_origin_y = cv::imread(filename_y, CV_LOAD_IMAGE_GRAYSCALE);
+      if (!cv_img_origin_x.data || !cv_img_origin_y.data){
+        LOG(ERROR) << "Could not load file " << filename_x << " or " << filename_y;
+        return false;
+      }
+      if (height > 0 && width > 0){
+        cv::resize(cv_img_origin_x, cv_img_x, cv::Size(width, height));
+        cv::resize(cv_img_origin_y, cv_img_y, cv::Size(width, height));
+      }else{
+        cv_img_x = cv_img_origin_x;
+        cv_img_y = cv_img_origin_y;
+      }
+      if (file_id==1 && i==0){
+        int num_channels = 2;
+        datum->set_channels((num_channels*length + 1) *offsets.size());
+        datum->set_height(cv_img_x.rows);
+        datum->set_width(cv_img_x.cols);
+        datum->set_label(label);
+        datum->clear_data();
+        datum->clear_float_data();
+        datum_string = datum->mutable_data();
+      }
+      for (int h = 0; h < cv_img_x.rows; ++h){
+        for (int w = 0; w < cv_img_x.cols; ++w){
+          datum_string->push_back(static_cast<char>(cv_img_x.at<uchar>(h,w)));
+        }
+      }
+      for (int h = 0; h < cv_img_y.rows; ++h){
+        for (int w = 0; w < cv_img_y.cols; ++w){
+          datum_string->push_back(static_cast<char>(cv_img_y.at<uchar>(h,w)));
+        }
+      }
+    }
+
+    sprintf(tmp, img_pattern, int(1+offset));
+    string filename_img = filename + "/" + tmp;
+    cv::Mat cv_img = cv::imread(filename_img, CV_LOAD_IMAGE_GRAYSCALE);
+
+    for (int h = 0; h < cv_img.rows; ++h){
+      for (int w = 0; w < cv_img.cols; ++w){
+        datum_string->push_back(static_cast<char>(cv_img.at<uchar>(h,w)));
+      }
+    }
+
+  }
+  return true;
 }
 
 }  // namespace caffe
